@@ -157,26 +157,29 @@ class AdvView(web.View):
             return web.json_response({"status": "success", "id": new_adv.id})
 
 
-    # def patch(self, adv_id: int):
-    #     json_data_validated = validate(UpdateAdvSchema, request.json)
-    #     with Session() as session:
-    #         adv = get_adv(adv_id, session)
+    async def patch(self):
+        adv_id = int(self.request.match_info["adv_id"])
+        json_data = await self.request.json()
+        json_data_validated = validate(UpdateAdvSchema, json_data)
+        #print(json_data_validated)
+        async with Session() as session:
+            adv = await get_adv(adv_id, session)
+
+            for key, value in json_data_validated.items():
+                setattr(adv, key, value)
+            session.add(adv)
+            await session.commit()
+
+            return web.json_response({"title": adv.title, "description": adv.desc})
     #
-    #         for key, value in json_data_validated.items():
-    #             setattr(adv, key, value)
-    #         session.add(adv)
-    #         session.commit()
-    #
-    #         return jsonify(
-    #             {"title": adv.title, "description": adv.desc})
-    #
-    # def delete(self, adv_id: int):
-    #     with Session() as session:
-    #         adv = get_adv(adv_id, session)
-    #         session.delete(adv)
-    #         session.commit()
-    #
-    #     return jsonify(f"Adv wit id {adv_id} deleted")
+    async def delete(self):
+        adv_id = int(self.request.match_info["adv_id"])
+        async with Session() as session:
+            adv = await get_adv(adv_id, session)
+            await session.delete(adv)
+            await session.commit()
+
+        return web.json_response(f"Adv with id {adv_id} deleted")
 
 
 
@@ -192,6 +195,8 @@ async def init_orm(app):
 
 
 app.router.add_route("GET", '/adv/{adv_id:\d+}', AdvView)
+app.router.add_route("DELETE", '/adv/{adv_id:\d+}', AdvView)
+app.router.add_route("PATCH", '/adv/{adv_id:\d+}', AdvView)
 app.router.add_route("POST", '/adv/', AdvView)
 app.cleanup_ctx.append(init_orm)
 logging.basicConfig(level=logging.DEBUG)
