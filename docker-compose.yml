@@ -25,9 +25,9 @@ services:
     build:
       context: .
     environment:
-      PG_DSN: postgresql://app:1234@db-main:5432/netology
+      PG_DSN: postgresql+asyncpg://app:1234@db:5432/netology_flask
     ports:
-      - "5000:5000"
+      - "8080:8080"
     depends_on:
       - db
     #networks:
@@ -40,23 +40,5 @@ services:
       - ./app:/app
     working_dir: /app     
     entrypoint: sh ./run.sh  
-
-  tests:
-    build:
-      context: .
-      dockerfile: Dockerfile.tests
-    environment:
-      API_URL: http://flask_api:5000
-      PG_DSN: postgresql://app:1234@db-main:5432/netology
-    depends_on:
-      - db
-      - app
-    working_dir: /app
-    entrypoint: pytest -v -s --disable-warnings
-
-    #networks:
-    #  dev_network:
-    #    aliases:
-    #      - test_client
-    volumes:
-      - ./app/:/app
+    #entrypoint: python3 main.py
+    #entrypoint: PYTHONUNBUFFERED=TRUE gunicorn -b 0.0.0.0:5000 main:app --capture-output

@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from typing import Union, Optional
 
 from aiohttp import web
@@ -12,7 +13,8 @@ from sqlalchemy.future import select
 
 import pydantic
 
-DSN = "postgresql+asyncpg://app:1234@127.0.0.1:5431/netology_flask"
+# DSN = "postgresql+asyncpg://app:1234@127.0.0.1:5431/netology_flask"
+DSN = os.getenv("PG_DSN", default="postgresql+asyncpg://app:1234@127.0.0.1:5431/netology_flask")
 
 engine = create_async_engine(DSN)
 Session = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
@@ -52,6 +54,7 @@ class HTTPError(web.HTTPException):
 class NotFound(HTTPError):
     status_code = 404
 
+
 class BadRequest(HTTPError):
     status_code = 400
 
@@ -64,12 +67,12 @@ class BadRequest(HTTPError):
 
 
 async def get_user(user_name: str, session: Session) -> User:
-    #user = await session.query(User).filter(User.nickname == user_name).first()
+    # user = await session.query(User).filter(User.nickname == user_name).first()
     result = await session.execute(select(User).filter(User.nickname == user_name))
     user = result.scalars().first()
-    #print(user)
+    # print(user)
     if user is None:
-        raise BadRequest( f"user {user_name} not found ")
+        raise BadRequest(f"user {user_name} not found ")
     return user
 
 
@@ -117,7 +120,7 @@ def validate(Schema, data: dict):
     try:
         data_validated = Schema(**data).dict(exclude_none=True)
     except pydantic.ValidationError as er:
-        raise BadRequest( er.errors())
+        raise BadRequest(er.errors())
     return data_validated
 
 
@@ -129,7 +132,7 @@ class AdvView(web.View):
             print(adv_id)
             adv = await get_adv(adv_id, session)
 
-            #owner = await session.query(User).get(adv.owner_id)
+            # owner = await session.query(User).get(adv.owner_id)
             owner = await session.get(User, adv.owner_id)
 
         # return jsonify(**dict(adv)) #Можно ли распаковать?
@@ -152,16 +155,13 @@ class AdvView(web.View):
 
             await session.commit()
 
-
-
             return web.json_response({"status": "success", "id": new_adv.id})
-
 
     async def patch(self):
         adv_id = int(self.request.match_info["adv_id"])
         json_data = await self.request.json()
         json_data_validated = validate(UpdateAdvSchema, json_data)
-        #print(json_data_validated)
+        # print(json_data_validated)
         async with Session() as session:
             adv = await get_adv(adv_id, session)
 
@@ -171,6 +171,7 @@ class AdvView(web.View):
             await session.commit()
 
             return web.json_response({"title": adv.title, "description": adv.desc})
+
     #
     async def delete(self):
         adv_id = int(self.request.match_info["adv_id"])
@@ -180,10 +181,6 @@ class AdvView(web.View):
             await session.commit()
 
         return web.json_response(f"Adv with id {adv_id} deleted")
-
-
-
-
 
 
 async def init_orm(app):
